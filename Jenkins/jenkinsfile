@@ -1,0 +1,60 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_HUB_USER = 'jayeshdockerhub'      //Manage Jenkins -> Credentials -> System -> Global credentials
+    }
+
+
+    stages {    
+        stage('git checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/JayeshBhalerao/Project-1.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                dir('Docker and app') { // Navigate into app folder
+                    bat 'docker build -t project-1 .'
+                }
+            }
+        }
+
+        stage('Docker Login with Access Token') {      //dockerhun token save in secret text named as dockerhub-token
+            steps {
+                withCredentials([string(credentialsId: 'dockerhub-token', variable: 'DOCKER_HUB_PASS')]) {
+                    bat """
+                        echo %DOCKER_HUB_PASS% | docker login -u %DOCKER_HUB_USER% --password-stdin
+                    """
+                }
+            }
+         }
+
+         stage('Docker Image Tag and Push') {
+            steps {
+                bat '''docker tag project-1 jayeshdockerhub/project-1:version1
+                       docker push jayeshdockerhub/project-1:version1'''
+            }
+        }
+
+         stage('Kubernetes pull image from docker') {
+            steps {
+                dir('Kubernetes') { // Navigate into kubernetes folder
+                bat '''kubectl apply -f service.yml
+                       kubectl apply -f deployment.yml'''
+            }
+          }
+        }
+    }
+}
+
+
+
+//git checkout
+//docker build
+//docker login
+//docker tag and push images
+//k8s pull
+//k8s apply service
+//k8s apply deployment
